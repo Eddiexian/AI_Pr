@@ -5,6 +5,7 @@ import DashboardView from '../views/DashboardView.vue'
 import EditorView from '../views/EditorView.vue'
 import OperationView from '../views/OperationView.vue'
 import LoginView from '../views/LoginView.vue'
+import AdminView from '../views/AdminView.vue'
 
 const router = createRouter({
     history: createWebHistory(),
@@ -31,6 +32,12 @@ const router = createRouter({
             name: 'operation',
             component: OperationView,
             meta: { requiresAuth: true } // 需要驗證權限
+        },
+        {
+            path: '/admin',
+            name: 'admin',
+            component: AdminView, // Use the imported component
+            meta: { requiresAuth: true, role: 'admin' }
         }
     ]
 })
@@ -39,12 +46,13 @@ const router = createRouter({
 // 用於檢查即將訪問的路由是否需要權限驗證
 router.beforeEach((to, from, next) => {
     const auth = useAuthStore()
-    // 如果目標路由需要驗證且使用者尚未登入
-    if (to.meta.requiresAuth && !auth.isAuthenticated) {
-        // 重定向到登入頁面
+
+    if (to.meta.requiresAuth && !auth.user) {
         next('/login')
+    } else if (to.meta.role && auth.role !== to.meta.role) {
+        alert('權限不足 (Insufficient Permissions)')
+        next('/')
     } else {
-        // 否則放行
         next()
     }
 })

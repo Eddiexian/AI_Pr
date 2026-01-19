@@ -1,145 +1,162 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { useStorage } from '@vueuse/core'
+import { ref } from 'vue'
+import api from '../services/api'
 
-// 在製品 (Work In Process) 介面
-// 代表生產線上的單個在製品
-export interface WIP {
+export interface Component {
   id: string
-  model: string // 型號
-  grade: string // 等級
-  op_id: string // 操作員 ID
+  layoutId: string
+  type: 'bin' | 'pillar' | 'marker' | 'machine'
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number
+  shapePoints?: { x: number, y: number }[]
+  code?: string
+  props?: any
+  data?: any // For WIP data
 }
 
-// PPBOX 介面
-// 代表一個包含多個 WIP 的載具或盒子
-export interface PPBOX {
-  id: string
-  box_id: string // 盒子編號
-  wips: WIP[] // 包含的 WIP 列表
-}
-
-// 儲存位 (Bin) 介面
-// 代表倉庫規劃圖中的一個具體儲位
-export interface Bin {
-  id: string
-  layoutId: string // 所屬佈局 ID
-  x: number // X 座標
-  y: number // Y 座標
-  w: number // 寬度
-  h: number // 高度
-  code: string // 儲位代碼 (例如: A-01)
-  status: 'empty' | 'occupied' | 'reserved' // 狀態: 空閒 | 佔用 | 預留
-  data?: any // 舊版資料保留欄位
-  contents: PPBOX[] // 儲位內容 (半導體相關資料)
-}
-
-// 佈局 (Layout) 介面
-// 代表一個倉庫區域的整體佈局圖
 export interface Layout {
   id: string
-  name: string // 佈局名稱 (例如: 1F A區)
-  width: number // 畫布寬度
-  height: number // 畫布高度
+  name: string
+  width: number
+  height: number
+  floor?: string
+  area?: string
+  components?: Component[]
 }
 
 export const useWarehouseStore = defineStore('warehouse', () => {
-  // 使用 VueUse 的 useStorage 將資料持久化到 localStorage
-  const layouts = useStorage<Layout[]>('wms-layouts', [])
-  const bins = useStorage<Bin[]>('wms-bins', [])
+  const layouts = ref<Layout[]>([])
+  const currentLayout = ref<Layout | null>(null)
+  const binCounts = ref<Record<string, number>>({})
 
-  // 根據 Layout ID 取得該佈局下的所有儲位
-  const getBinsByLayout = (layoutId: string) => computed(() =>
-    bins.value.filter(b => b.layoutId === layoutId)
-  )
-
-  // 新增佈局
-  const addLayout = (name: string, width = 800, height = 600) => {
-    const id = crypto.randomUUID()
-    layouts.value.push({ id, name, width, height })
-    return id
-  }
-
-  // 更新佈局資訊
-  const updateLayout = (id: string, updates: Partial<Layout>) => {
-    const layout = layouts.value.find(l => l.id === id)
-    if (layout) {
-      Object.assign(layout, updates)
+  // Fetch All Layouts
+  const fetchLayouts = async () => {
+    try {
+      const res = await api.get('/layouts/')
+      layouts.value = res.data
+    } catch (err) {
+      console.error('Failed to fetch layouts', err)
     }
   }
 
-  // 刪除佈局 (同時刪除該佈局下的所有儲位)
-  const removeLayout = (id: string) => {
-    layouts.value = layouts.value.filter(l => l.id !== id)
-    bins.value = bins.value.filter(b => b.layoutId !== id)
-  }
+  // Fetch Single Layout with Components
+  const fetchLayoutDetails = async (id: string) => {
+    try {
+      const res = await api.get(`/layouts/${id}`)
+      currentLayout.value = res.data
 
-  // 新增儲位
-  const addBin = (layoutId: string, x: number, y: number) => {
-    const id = crypto.randomUUID()
-    bins.value.push({
-      id,
-      layoutId,
-      x,
-      y,
-      w: 100,
-      h: 100,
-      code: `NEW-${bins.value.length + 1}`,
-      status: 'empty',
-      contents: []
-    })
-    return id
-  }
-
-  // 更新儲位資訊
-  const updateBin = (id: string, updates: Partial<Bin>) => {
-    const bin = bins.value.find(b => b.id === id)
-    if (bin) {
-      Object.assign(bin, updates)
-    }
-  }
-
-  // 刪除儲位
-  const removeBin = (id: string) => {
-    bins.value = bins.value.filter(b => b.id !== id)
-  }
-
-  // 產生模擬資料 (用於展示)
-  // 當儲位內容為空時，填入一些假資料
-  const mockBinData = (binId: string) => {
-    const bin = bins.value.find(b => b.id === binId)
-    if (bin && bin.contents.length === 0) {
-      bin.contents = [
-        {
-          id: crypto.randomUUID(),
-          box_id: 'PB-2024-001',
-          wips: [
-            { id: 'W-01', model: 'PNL-X1', grade: 'A', op_id: 'OP-200' },
-            { id: 'W-02', model: 'PNL-X1', grade: 'A', op_id: 'OP-200' }
-          ]
-        },
-        {
-          id: crypto.randomUUID(),
-          box_id: 'PB-2024-002',
-          wips: [
-            { id: 'W-03', model: 'PNL-Z9', grade: 'B', op_id: 'OP-300' }
-          ]
+      // Auto fetch counts for this layout
+      if (res.data.components) {
+        const codes = res.data.components
+          .filter((c: Component) => c.type === 'bin' && c.code)
+          .map((c: Component) => c.code)
+        if (codes.length > 0) {
+          fetchBinCounts(codes)
         }
-      ]
-      bin.status = 'occupied'
+      }
+    } catch (err) {
+      console.error('Failed to fetch layout details', err)
+    }
+  }
+
+  // Fetch Bin Counts
+  const fetchBinCounts = async (binCodes: string[]) => {
+    try {
+      const res = await api.post('/data/counts', { binCodes })
+      binCounts.value = { ...binCounts.value, ...res.data }
+    } catch (err) {
+      console.error('Failed to fetch bin counts', err)
+    }
+  }
+
+  // Add Layout
+  const addLayout = async (name: string, width = 800, height = 600) => {
+    try {
+      const res = await api.post('/layouts/', { name, width, height })
+      layouts.value.push(res.data)
+      return res.data.id
+    } catch (err) {
+      console.error('Failed to create layout', err)
+      return null
+    }
+  }
+
+  // Remove Layout
+  const removeLayout = async (id: string) => {
+    try {
+      await api.delete(`/layouts/${id}`)
+      layouts.value = layouts.value.filter(l => l.id !== id)
+      if (currentLayout.value?.id === id) currentLayout.value = null
+    } catch (err) {
+      console.error('Failed to delete layout', err)
+    }
+  }
+
+  // Add Component
+  const addComponent = async (layoutId: string, component: Partial<Component>) => {
+    try {
+      const res = await api.post(`/layouts/${layoutId}/components`, component)
+      if (currentLayout.value && currentLayout.value.id === layoutId) {
+        if (!currentLayout.value.components) currentLayout.value.components = []
+        currentLayout.value.components.push(res.data)
+      }
+    } catch (err) {
+      console.error('Failed to add component', err)
+    }
+  }
+
+  // Update Component
+  const updateComponent = async (componentId: string, updates: Partial<Component>) => {
+    try {
+      const res = await api.put(`/layouts/components/${componentId}`, updates)
+      if (currentLayout.value && currentLayout.value.components) {
+        const idx = currentLayout.value.components.findIndex(c => c.id === componentId)
+        if (idx !== -1) {
+          currentLayout.value.components[idx] = res.data
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update component', err)
+    }
+  }
+
+  // Remove Component
+  const removeComponent = async (componentId: string) => {
+    try {
+      await api.delete(`/layouts/components/${componentId}`)
+      if (currentLayout.value && currentLayout.value.components) {
+        currentLayout.value.components = currentLayout.value.components.filter(c => c.id !== componentId)
+      }
+    } catch (err) {
+      console.error('Failed to delete component', err)
+    }
+  }
+
+  // Fetch WIP Data
+  const fetchWipData = async (binCodes: string[]) => {
+    try {
+      const res = await api.post('/data/wip', { binCodes })
+      return res.data
+    } catch (err) {
+      console.error('Failed to fetch WIP data', err)
+      return {}
     }
   }
 
   return {
     layouts,
-    bins,
-    getBinsByLayout,
+    currentLayout,
+    fetchLayouts,
+    fetchLayoutDetails,
     addLayout,
-    updateLayout,
     removeLayout,
-    addBin,
-    updateBin,
-    removeBin,
-    mockBinData
+    addComponent,
+    updateComponent,
+    removeComponent,
+    fetchWipData,
+    binCounts
   }
 })

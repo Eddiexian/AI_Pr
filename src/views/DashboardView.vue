@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useWarehouseStore } from '../stores/warehouse'
 import { useAuthStore } from '../stores/auth'
@@ -9,11 +9,17 @@ const auth = useAuthStore()
 const router = useRouter()
 const newLayoutName = ref('')
 
-const handleCreate = () => {
+onMounted(async () => {
+    await store.fetchLayouts()
+})
+
+const handleCreate = async () => {
   if (!newLayoutName.value) return
-  const id = store.addLayout(newLayoutName.value)
-  newLayoutName.value = ''
-  router.push(`/editor/${id}`)
+  const id = await store.addLayout(newLayoutName.value)
+  if (id) {
+    newLayoutName.value = ''
+    router.push(`/editor/${id}`)
+  }
 }
 
 const navigateTo = (path: string) => {
@@ -31,14 +37,16 @@ const handleLogout = () => {
     <header class="page-header">
       <div>
          <h1>儲位佈局管理 (Warehouse Layouts)</h1>
-         <p class="welcome-text">歡迎, {{ auth.user }}</p>
       </div>
-      <div class="header-actions">
-        <button @click="handleLogout" class="btn-text">登出</button>
+      <div class="user-info">
+        <span class="username">{{ auth.user?.username }}</span>
+        <span class="role-tag">{{ auth.role }}</span>
+        <router-link v-if="auth.role === 'admin'" to="/admin" class="admin-link">管理用戶</router-link>
+        <button @click="auth.logout" class="btn-logout">登出</button>
       </div>
     </header>
 
-    <div class="create-section">
+    <div v-if="auth.role !== 'worker'" class="create-section">
         <h3>新增佈局</h3>
         <div class="create-control">
             <input v-model="newLayoutName" placeholder="請輸入佈局名稱 (New Layout Name)" @keyup.enter="handleCreate" />
@@ -55,9 +63,9 @@ const handleLogout = () => {
         <h3>{{ layout.name }}</h3>
         <p class="meta">{{ layout.width }} x {{ layout.height }} px</p>
         <div class="actions">
-          <button @click="navigateTo(`/editor/${layout.id}`)" class="btn-secondary">編輯佈局</button>
+          <button v-if="auth.role !== 'worker'" @click="navigateTo(`/editor/${layout.id}`)" class="btn-secondary">編輯佈局</button>
           <button @click="navigateTo(`/operation/${layout.id}`)" class="btn-accent">作業模式</button>
-          <button @click="store.removeLayout(layout.id)" class="btn-danger">刪除</button>
+          <button v-if="auth.role === 'admin'" @click="store.removeLayout(layout.id)" class="btn-danger">刪除</button>
         </div>
       </div>
     </div>
@@ -169,5 +177,33 @@ button:hover {
   border-radius: 12px;
   border: 2px dashed rgba(255,255,255,0.1);
   color: #94a3b8;
+}
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.role-tag {
+  background: #334155;
+  color: #94a3b8;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+.admin-link {
+  color: #fbbf24;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.admin-link:hover {
+  text-decoration: underline;
+}
+.btn-logout {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 </style>

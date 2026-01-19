@@ -10,8 +10,8 @@ const username = ref('admin')
 const password = ref('1234')
 const error = ref('')
 
-const handleLogin = () => {
-  if (auth.login(username.value, password.value)) {
+const handleLogin = async () => {
+  if (await auth.login(username.value, password.value)) {
     router.push('/')
   } else {
     error.value = '帳號或密碼錯誤 (預設: admin / 1234)'

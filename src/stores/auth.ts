@@ -1,30 +1,36 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useStorage } from '@vueuse/core'
+import api from '../services/api'
 
 export const useAuthStore = defineStore('auth', () => {
-    // 存儲使用者是否已登入
     const isAuthenticated = ref(false)
-    // 存儲目前使用者名稱
     const user = ref('')
+    const role = ref('worker')
+    const token = useStorage('auth-token', '') // Persist token
 
-    // 登入方法
-    const login = (username: string, pass: string) => {
-        // 簡單的模擬驗證邏輯
-        // 帳號: admin, 密碼: 1234
-        if (username === 'admin' && pass === '1234') {
+    const login = async (username: string, pass: string) => {
+        try {
+            const response = await api.post('/auth/login', { username, password: pass })
+            const data = response.data
+
+            token.value = data.token
+            user.value = data.user.username
+            role.value = data.user.role
             isAuthenticated.value = true
-            user.value = 'Admin'
             return true
+        } catch (error) {
+            console.error('Login failed', error)
+            return false
         }
-        return false
     }
 
-    // 登出方法
     const logout = () => {
+        token.value = ''
         isAuthenticated.value = false
         user.value = ''
+        role.value = 'worker'
     }
 
-    return { isAuthenticated, user, login, logout }
+    return { isAuthenticated, user, role, token, login, logout }
 })
