@@ -7,6 +7,7 @@ const auth = useAuthStore()
 const users = ref<any[]>([])
 const loading = ref(false)
 
+// 獲取使用者列表 (Fetch User List)
 const fetchUsers = async () => {
   loading.value = true
   try {
@@ -19,6 +20,7 @@ const fetchUsers = async () => {
   }
 }
 
+// 更新使用者角色 (Update User Role)
 const updateRole = async (userId: number, role: string) => {
   try {
     await api.put(`/auth/users/${userId}/role`, { role })

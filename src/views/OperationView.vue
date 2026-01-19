@@ -20,18 +20,18 @@ const searchQuery = ref('')
 const searchResult = ref<string | null>(null)
 
 // Find WIP Logic
+// 搜尋定位邏輯 (Search & Positioning Logic)
 const handleSearch = async () => {
   if (!searchQuery.value) return
-  // Logic: 1. If query is a bin code, find it. 2. If query is a sheet ID, find its bin (Mock)
+  // 邏輯: 1. 若輸入為儲位代碼則直接定位 2. 若為 Sheet ID 則模擬搜尋 (Mock)
   let targetCode = searchQuery.value.trim().toUpperCase()
   
-  // Mock Sheet ID mapping: If it ends in his ID, map to a bin
   const foundByCode = components.value.find(c => c.code?.toUpperCase() === targetCode)
   if (foundByCode) {
     handleCompClick(foundByCode)
     searchResult.value = foundByCode.code
   } else {
-    // Mock sheet search: just pick a bin with WIP if query contains "S"
+    // 模擬 Sheet 搜尋: 若包含 "S" 則隨機指向一個有 WIP 的儲位
     const mockBin = components.value.find(c => c.type === 'bin')
     if (mockBin) {
       handleCompClick(mockBin)
@@ -63,11 +63,16 @@ const closeDetail = () => {
     wipData.value = null
 }
 
+// 獲取儲位填滿顏色 (Get Fill Color based on status)
 const getFillColor = (comp: Component) => {
+    // 搜尋高亮 (Search matching)
     if (searchResult.value === comp.code) return '#fbbf24' // Highlight yellow
+    
+    // 根據數量顯示不同警示色 (Alert colors based on box count)
     const count = store.binCounts[comp.code || ''] || 0
-    if (count > 3) return 'rgba(239, 68, 68, 0.7)' // Critical
-    if (count > 0) return 'rgba(16, 185, 129, 0.7)' // Healthy
+    if (count > 3) return 'rgba(239, 68, 68, 0.7)' // 數量過多 (Critical)
+    if (count > 0) return 'rgba(16, 185, 129, 0.7)' // 正常 (Healthy)
+    
     // Determine color based on status (Requires backend status calculation or separate status map)
     // For now, random/hashed status or simple check
     // In real app, we might merge dynamic status into components
