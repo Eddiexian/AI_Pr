@@ -42,6 +42,7 @@ const addRectBin = async () => {
 }
 
 // 新增多邊形儲位 (Add Polygon Bin)
+const addPolygonBin = async () => {
     // Standard Hexagon for demo
     if (!layout.value) return
     const points = [

@@ -1,70 +1,53 @@
 # 倉庫管理系統 (WMS)
 
-這是一個現代化的倉庫管理系統 (Warehouse Management System)，旨在提供直觀的倉庫佈局編輯與日常作業管理功能。
+這是一個現代化的倉庫管理系統 (Warehouse Management System)，提供直觀的倉庫佈局編輯與日常作業管理。
 
 ## 🚀 技術棧 (Tech Stack)
 
-本專案採用以下前端技術構建：
+### 前端 (Frontend)
+- **Vue 3** + **TypeScript** + **Vite**
+- **Pinia** (狀態管理)
+- **Vue Router** (路由管理)
 
--   **[Vue 3](https://vuejs.org/)**: 漸進式 JavaScript 框架
--   **[TypeScript](https://www.typescriptlang.org/)**: 強型別的 JavaScript 超集
--   **[Vite](https://vitejs.dev/)**: 下一代前端構建工具，提供極速的開發體驗
--   **[Pinia](https://pinia.vuejs.org/)**: Vue 的專屬狀態管理庫
--   **[Vue Router](https://router.vuejs.org/)**: Vue.js 的官方路由管理器
--   **[VueUse](https://vueuse.org/)**: 必要的 Vue Composition Utilities 集合
+### 後端 (Backend)
+- **Python Flask**: 提供 REST API
+- **pyodbc + Mock Data**: 
+  - 後端邏輯已整合至單一檔案 `backend/app.py`。
+  - 使用 `MockCursor` 模擬 SQL 執行，目前為 **Dev/Mock** 模式，無需實際資料庫即可測試。
 
 ## ✨ 功能特色 (Features)
 
--   **身份驗證 (Authentication)**: 
-    -   完整的登入系統
-    -   路由守衛 (Router Guards) 保護需要權限的頁面
--   **儀表板 (Dashboard)**: 
-    -   系統概覽與導航
--   **倉庫編輯器 (Warehouse Editor)**:
-    -   可視化編輯倉庫佈局
-    -   拖放式操作 (預計功能)
--   **作業視圖 (Operation View)**:
-    -   日常倉庫作業的操作介面
-    -   庫位與庫存管理
+- **身份驗證**: 支援 admin/maintainer/worker 角色。
+- **倉庫編輯器**: 視覺化佈局編輯，支援矩形與多邊形儲位、機台擺放。
+- **作業視圖**: 即時查看儲位 WIP 詳情（點擊儲位即可查看）。
 
 ## 🛠️ 安裝與執行 (Setup)
 
-請確保您的電腦已安裝 [Node.js](https://nodejs.org/) (建議使用 LTS 版本)。
+### 1. 安裝與執行
+```bash
+# 安裝前端依賴
+npm install
 
-1.  **複製專案 (Clone Repository)**
+# 啟動後端 (建議另開一個終端)
+python backend/app.py
 
-    ```bash
-    git clone https://github.com/Eddiexian/AI_Pr.git
-    cd AI_Pr
-    ```
+# 啟動前端
+npm run dev
+```
 
-2.  **安裝依賴 (Install Dependencies)**
-
-    ```bash
-    npm install
-    ```
-
-3.  **啟動開發伺服器 (Start Dev Server)**
-
-    ```bash
-    npm run dev
-    ```
-
-4.  **建置生產版本 (Build for Production)**
-
-    ```bash
-    npm run build
-    ```
+### 2. 測試帳號
+- **管理員**: `admin` / `admin`
+- **維護員**: `main` / `main`
+- **作業員**: `user` / `user`
 
 ## 📂 專案結構 (Project Structure)
 
 ```
-src/
-├── assets/          # 靜態資源
-├── components/      # 共用元件
-├── router/          # 路由設定
-├── stores/          # Pinia 狀態管理 (Auth, Warehouse)
-├── views/           # 頁面組件 (Login, Dashboard, Editor, Operation)
-├── App.vue          # 根組件
-└── main.ts          # 程式入口點
+AI_Pr/
+├── src/                # 前端源碼
+│   ├── views/          # 頁面 (Login, Dashboard, Editor, Operation)
+│   ├── stores/          # Pinia 管理 (Auth, Warehouse)
+│   └── components/     # 共用元件
+└── backend/
+    └── app.py          # 整合型後端實作 (Flask + Mock SQL)
 ```
