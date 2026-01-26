@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import api from '../services/api'
-import { useAuthStore } from '../stores/auth'
+// import { useAuthStore } from '../stores/auth'
 
-const auth = useAuthStore()
+// const auth = useAuthStore()
 const users = ref<any[]>([])
 const loading = ref(false)
 
@@ -74,9 +74,18 @@ onMounted(fetchUsers)
 
 <style scoped>
 .admin-container {
+  /* 新增 flex:1 和 min-height:0 以適配 main-content flex */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
   padding: 2rem;
   max-width: 1000px;
   margin: 0 auto;
+
+  /* 如果要保持深色背景，加這行（可選） */
+  background: #0f172a;
 }
 .admin-header {
   display: flex;
