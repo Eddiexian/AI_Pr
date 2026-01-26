@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api', // Adjust if backend port differs
+    baseURL: 'http://tw100043626.corpnet.auo.com:4077/api', // Adjust if backend port differs
     headers: {
         'Content-Type': 'application/json'
     }
