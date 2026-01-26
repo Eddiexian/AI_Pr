@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import { useWarehouseStore } from '../stores/warehouse'
 import { useAuthStore } from '../stores/auth'
 
+
+
+
 const store = useWarehouseStore()
 const auth = useAuthStore()
 const router = useRouter()
@@ -26,10 +29,7 @@ const navigateTo = (path: string) => {
   router.push(path)
 }
 
-const handleLogout = () => {
-  auth.logout()
-  router.push('/login')
-}
+
 </script>
 
 <template>
@@ -39,7 +39,7 @@ const handleLogout = () => {
          <h1>儲位佈局管理 (Warehouse Layouts)</h1>
       </div>
       <div class="user-info">
-        <span class="username">{{ auth.user?.username }}</span>
+        <span class="username">{{ auth.user }}</span>
         <span class="role-tag">{{ auth.role }}</span>
         <router-link v-if="auth.role === 'admin'" to="/admin" class="admin-link">管理用戶</router-link>
         <button @click="auth.logout" class="btn-logout">登出</button>
