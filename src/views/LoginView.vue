@@ -44,7 +44,8 @@ const handleLogin = async () => {
 
 <style scoped>
 .login-container {
-  height: 100vh;
+  flex: 1;              /* 在 main-content 中自適應 */
+  min-height: 0;        /* 避免 flex 子元素溢出 */
   display: flex;
   align-items: center;
   justify-content: center;
