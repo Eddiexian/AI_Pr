@@ -1,3 +1,4 @@
+// src/stores/warehouse.ts
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '../services/api'
@@ -11,7 +12,7 @@ export interface Component {
   width: number
   height: number
   rotation: number
-  shapePoints?: { x: number, y: number }[]
+  shapePoints?: { x: number; y: number }[]
   code?: string
   props?: any
   data?: any // For WIP data
@@ -30,7 +31,12 @@ export interface Layout {
 export const useWarehouseStore = defineStore('warehouse', () => {
   const layouts = ref<Layout[]>([])
   const currentLayout = ref<Layout | null>(null)
+
+  // 原本就有的：用來做顏色用的 mock 數量
   const binCounts = ref<Record<string, number>>({})
+
+  // 新增：每個儲位底下 Cassette 數量（真正從 DB 算出來）
+  const binCassetteCounts = ref<Record<string, number>>({})
 
   // Fetch All Layouts
   const fetchLayouts = async () => {
@@ -42,33 +48,50 @@ export const useWarehouseStore = defineStore('warehouse', () => {
     }
   }
 
-  // Fetch Single Layout with Components
-  const fetchLayoutDetails = async (id: string) => {
-    try {
-      const res = await api.get(`/layouts/${id}`)
-      currentLayout.value = res.data
-
-      // Auto fetch counts for this layout
-      if (res.data.components) {
-        const codes = res.data.components
-          .filter((c: Component) => c.type === 'bin' && c.code)
-          .map((c: Component) => c.code)
-        if (codes.length > 0) {
-          fetchBinCounts(codes)
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch layout details', err)
-    }
-  }
-
-  // Fetch Bin Counts
+  // Fetch Bin Counts（原本的 mock API）
   const fetchBinCounts = async (binCodes: string[]) => {
     try {
       const res = await api.post('/data/counts', { binCodes })
       binCounts.value = { ...binCounts.value, ...res.data }
     } catch (err) {
       console.error('Failed to fetch bin counts', err)
+    }
+  }
+
+  // 新增：Fetch Cassette Counts（真正算 Cassette 數量）
+  const fetchCassetteCounts = async (binCodes: string[]) => {
+    try {
+      if (!binCodes.length) return
+      const res = await api.post('/data/cassette-counts', { binCodes })
+      // 直接覆蓋或 merge 都可以，看你需求
+      binCassetteCounts.value = { ...binCassetteCounts.value, ...res.data }
+    } catch (err) {
+      console.error('Failed to fetch cassette counts', err)
+    }
+  }
+
+  // Fetch Single Layout with Components
+  const fetchLayoutDetails = async (id: string) => {
+    try {
+      const res = await api.get(`/layouts/${id}`)
+      currentLayout.value = res.data
+
+      // Auto fetch counts for this layout（原本的 mock counts）
+      if (res.data.components) {
+        const codes = res.data.components
+          .filter((c: Component) => c.type === 'bin' && c.code)
+          .map((c: Component) => c.code as string)
+
+        if (codes.length > 0) {
+          // 原本就有的：隨機數，若之後不需要可以拿掉
+          fetchBinCounts(codes)
+
+          // 新增：一進 layout 時，也一次抓 Cassette 數量
+          fetchCassetteCounts(codes)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch layout details', err)
     }
   }
 
@@ -108,14 +131,16 @@ export const useWarehouseStore = defineStore('warehouse', () => {
     }
   }
 
-  // Update Component
+  // Update Component（改成就地更新）
   const updateComponent = async (componentId: string, updates: Partial<Component>) => {
     try {
-      const res = await api.put(`/layouts/components/${componentId}`, updates)
+      const res = await api.put(`/components/${componentId}`, updates)
       if (currentLayout.value && currentLayout.value.components) {
         const idx = currentLayout.value.components.findIndex(c => c.id === componentId)
         if (idx !== -1) {
-          currentLayout.value.components[idx] = res.data
+          const comp = currentLayout.value?.components?.[idx]
+          if (!comp) return
+          Object.assign(comp, res.data)
         }
       }
     } catch (err) {
@@ -123,12 +148,24 @@ export const useWarehouseStore = defineStore('warehouse', () => {
     }
   }
 
+
+  const locateByChipOrCassette = async (payload: { chipId?: string; cassetteId?: string }) => {
+    try {
+      const res = await api.post('/data/locate', payload)
+      return res.data   // { bin_code, cassette_id, chip_id } 或 {}
+    } catch (err) {
+      console.error('Failed to locate by chip/cassette', err)
+      return {}
+    }
+  }
+
   // Remove Component
   const removeComponent = async (componentId: string) => {
     try {
-      await api.delete(`/layouts/components/${componentId}`)
+      await api.delete(`/components/${componentId}`)
       if (currentLayout.value && currentLayout.value.components) {
-        currentLayout.value.components = currentLayout.value.components.filter(c => c.id !== componentId)
+        currentLayout.value.components =
+          currentLayout.value.components.filter(c => c.id !== componentId)
       }
     } catch (err) {
       console.error('Failed to delete component', err)
@@ -146,17 +183,32 @@ export const useWarehouseStore = defineStore('warehouse', () => {
     }
   }
 
+  const updateLayout = async (layoutId: string, payload: { width: number, height: number }) => {
+    await api.put(`/layouts/${layoutId}`, payload)
+    // 注意：currentLayout 是 ref，需要 .value
+    if (currentLayout.value && currentLayout.value.id === layoutId) {
+      currentLayout.value.width = payload.width
+      currentLayout.value.height = payload.height
+    }
+  }
+
   return {
     layouts,
     currentLayout,
+    binCounts,
+    binCassetteCounts,      // <<< 新增 export
+
     fetchLayouts,
     fetchLayoutDetails,
+    fetchBinCounts,
+    fetchCassetteCounts,    // <<< 新增 export
+    locateByChipOrCassette,
     addLayout,
     removeLayout,
     addComponent,
     updateComponent,
     removeComponent,
     fetchWipData,
-    binCounts
+    updateLayout,
   }
 })
